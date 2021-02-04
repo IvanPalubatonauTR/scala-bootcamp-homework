@@ -52,15 +52,15 @@ object ControlStructures {
 
   def parseCommand(x: String): Either[ErrorMessage, Command] = {
 
-    val listOfStrings = x.toLowerCase.split("\\s+").toList.filter(_ != " ")
+    val listOfStrings = x.toLowerCase.split("\\s+").toList
     val tupleToParse = (listOfStrings.head, listOfStrings.tail.map(_.toDoubleOption))
 
     tupleToParse match {
-      case (DIVIDE, dividend :: divisor) => Right(Divide(dividend, divisor.head))
-      case (SUM, x :: xs) => Right(Sum(x :: xs))
-      case (AVERAGE, x :: xs) => Right(Average(x :: xs))
-      case (MIN, x :: xs) => Right(Min(x :: xs))
-      case (MAX, x :: xs) => Right(Max(x :: xs))
+      case (DIVIDE, dividend :: divisor :: _) => Right(Divide(dividend, divisor))
+      case (SUM, list@_ :: _ :: _) => Right(Sum(list))
+      case (AVERAGE, list@_ :: _ :: _) => Right(Average(list))
+      case (MIN, list@_ :: _ :: _) => Right(Min(list))
+      case (MAX, list@_ :: _ :: _) => Right(Max(list))
       case _ => Left(InvalidCommandError(ErrorPrefix + "Invalid command"))
     }
   }
