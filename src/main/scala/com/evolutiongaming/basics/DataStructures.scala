@@ -22,18 +22,19 @@ object DataStructures {
 
   val totalVegetableWeights: Map[String, Int] = {
     for {
-      weights <- vegetableWeights
-      count <- vegetableAmounts.get(weights._1)
-    } yield (weights._1, count * weights._2)
+      (vegetable, weight) <- vegetableWeights
+      count <- vegetableAmounts.get(vegetable)
+    } yield (vegetable, count * weight)
   }
 
   val totalVegetableCost: Int = {
     (for {
-      amounts <- vegetableAmounts
-      price = vegetablePrices.getOrElse(amounts._1, 10) * amounts._2
+      (vegetable, amount) <- vegetableAmounts
+      price = vegetablePrices.getOrElse(vegetable, 10) * amount
     } yield price).sum
   }
 
+  //TODO:implementation has a bug :)
   def allSubsetsOfSizeN[A](set: Set[A], n: Int): Set[Set[A]] = {
     n match {
       case 1 => for {y <- set} yield Set(y)
@@ -47,9 +48,9 @@ object DataStructures {
 
   def sortConsideringEqualValues[T](map: Map[T, Int]): Seq[(Set[T], Int)] = {
     (for {
-      (index, innerMap) <- map.groupBy(_._2)
+      (index, innerMap) <- map.groupBy { case (_, index) => index }
       string = innerMap.keySet
-    } yield string -> index).toSeq.sortBy(_._2)
+    } yield string -> index).toSeq.sortBy { case (_, index) => index }
   }
 
   def runningSum(nums: Array[Int]): Array[Int] = {
@@ -77,14 +78,15 @@ object DataStructures {
   }
 
   def balancedStringSplit(s: String): Int = {
+    val isStringBalanced: (String, String) => Boolean = (a, b) => (a.sorted diff b.sorted).length == 0 ||
+      (a + b).replaceAll("L", "").length != a.length
+
     @scala.annotation.tailrec
     def helpFunction(s1: String, iterator: Int, acc: Int): Int = {
       (s1.take(iterator), s1.slice(iterator, iterator + iterator)) match {
         case ("", _) => acc
-        case (a, b) if (a.sorted diff b.sorted).length == 0 || (a + b).replaceAll("L", "").length != a.length
-        => helpFunction(s1, iterator + 1, acc + 0)
-        case (a, b)
-        => helpFunction(s1.replaceFirst(a, "").replaceFirst(b, ""), 1, acc + 1)
+        case (a, b) if isStringBalanced(a, b) => helpFunction(s1, iterator + 1, acc + 0)
+        case (a, b) => helpFunction(s1.replaceFirst(a, "").replaceFirst(b, ""), 1, acc + 1)
       }
     }
 
@@ -101,6 +103,3 @@ object DataStructures {
   }
 
 }
-
-
-
