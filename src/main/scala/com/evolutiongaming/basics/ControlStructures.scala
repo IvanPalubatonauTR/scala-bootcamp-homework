@@ -21,17 +21,11 @@ object ControlStructures {
   sealed trait Command
 
   object Command {
-
     final case class Divide(dividend: Option[Double], divisor: Option[Double]) extends Command
-
     final case class Sum(numbers: List[Option[Double]]) extends Command
-
     final case class Average(numbers: List[Option[Double]]) extends Command
-
     final case class Min(numbers: List[Option[Double]]) extends Command
-
     final case class Max(numbers: List[Option[Double]]) extends Command
-
   }
 
   sealed trait ErrorMessage {
@@ -39,60 +33,43 @@ object ControlStructures {
   }
 
   object Error {
-
     final case class InvalidCommandError(value: String) extends ErrorMessage
-
     final case class DivisionByZeroError(value: String) extends ErrorMessage
-
     final case class CalculationError(value: String) extends ErrorMessage
-
   }
 
   final case class DataToRender(command: String, numbers: List[Option[Double]], calculatedValue: Double)
 
   def parseCommand(x: String): Either[ErrorMessage, Command] = {
-
     val listOfStrings = x.toLowerCase.split("\\s+").toList
     val tupleToParse = (listOfStrings.head, listOfStrings.tail.map(_.toDoubleOption))
 
     tupleToParse match {
       case (DIVIDE, dividend :: divisor :: _) => Right(Divide(dividend, divisor))
-      case (SUM, list@_ :: _ :: _) => Right(Sum(list))
+      case (SUM, list@_ :: _ :: _)     => Right(Sum(list))
       case (AVERAGE, list@_ :: _ :: _) => Right(Average(list))
-      case (MIN, list@_ :: _ :: _) => Right(Min(list))
-      case (MAX, list@_ :: _ :: _) => Right(Max(list))
-      case _ => Left(InvalidCommandError(ErrorPrefix + "Invalid command"))
+      case (MIN, list@_ :: _ :: _)     => Right(Min(list))
+      case (MAX, list@_ :: _ :: _)     => Right(Max(list))
+      case _                           => Left(InvalidCommandError(ErrorPrefix + "Invalid command"))
     }
   }
 
   def calculate(x: Command): Either[ErrorMessage, DataToRender] = {
     x match {
-      case Divide(_, Some(0)) =>
-        Left(DivisionByZeroError(ErrorPrefix + "Division by zero"))
-
-      case Divide(Some(dividend), Some(divisor)) =>
-        Right(DataToRender(DIVIDE, List(Some(dividend), Some(divisor)), dividend / divisor))
-
-      case Sum(list) if list.forall(_.isDefined) =>
-        Right(DataToRender(SUM, list, list.map(_.get).sum))
-
-      case Average(list) if list.forall(_.isDefined) =>
-        Right(DataToRender(AVERAGE, list, list.map(_.get).sum / list.length))
-
-      case Min(list) if list.forall(_.isDefined) =>
-        Right(DataToRender(MIN, list, list.map(_.get).min))
-
-      case Max(list) if list.forall(_.isDefined) =>
-        Right(DataToRender(MAX, list, list.map(_.get).max))
-
-      case _ => Left(CalculationError(ErrorPrefix + "Can not perform calculation on provided input"))
+      case Divide(_, Some(0))                        => Left(DivisionByZeroError(ErrorPrefix + "Division by zero"))
+      case Divide(Some(dividend), Some(divisor))     => Right(DataToRender(DIVIDE, List(Some(dividend), Some(divisor)), dividend / divisor))
+      case Sum(list) if list.forall(_.isDefined)     => Right(DataToRender(SUM, list, list.map(_.get).sum))
+      case Average(list) if list.forall(_.isDefined) => Right(DataToRender(AVERAGE, list, list.map(_.get).sum / list.length))
+      case Min(list) if list.forall(_.isDefined)     => Right(DataToRender(MIN, list, list.map(_.get).min))
+      case Max(list) if list.forall(_.isDefined)     => Right(DataToRender(MAX, list, list.map(_.get).max))
+      case _                                         => Left(CalculationError(ErrorPrefix + "Can not perform calculation on provided input"))
     }
   }
 
   def renderResult(x: DataToRender): String = {
     x.command match {
       case DIVIDE => s"${x.numbers.head.get} ${x.command}d by ${x.numbers.tail.head.get} is ${x.calculatedValue}"
-      case _ => s"the ${x.command} of ${x.numbers.map(_.get).mkString(" ")} is ${x.calculatedValue}"
+      case _      => s"the ${x.command} of ${x.numbers.map(_.get).mkString(" ")} is ${x.calculatedValue}"
     }
   }
 
@@ -102,7 +79,7 @@ object ControlStructures {
       z <- calculate(y)
     } yield renderResult(z)) match {
       case Right(value) => value
-      case Left(error) => error.value
+      case Left(error)  => error.value
     }
   }
 
