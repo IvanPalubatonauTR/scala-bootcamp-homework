@@ -36,7 +36,7 @@ object ADT {
 
   final case class Card(rank: Rank, suit: Suit)
 
-  sealed trait Hand
+  sealed trait Hand extends Any
 
   object Hand {
     final case class OmahaHand(cards: Set[Card]) extends AnyVal with Hand
