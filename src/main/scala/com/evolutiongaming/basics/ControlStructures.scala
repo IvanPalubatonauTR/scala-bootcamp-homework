@@ -1,7 +1,6 @@
 package com.evolutiongaming.basics
 
 import com.evolutiongaming.basics.ControlStructures.Command._
-import com.evolutiongaming.basics.ControlStructures.CommandConstants._
 import com.evolutiongaming.basics.ControlStructures.Error._
 
 import scala.io.Source
@@ -11,21 +10,21 @@ object ControlStructures {
 
   object CommandConstants {
     type CommandConstants = String
-    val DIVIDE = "divide"
-    val SUM = "sum"
-    val AVERAGE = "average"
-    val MIN = "min"
-    val MAX = "max"
+    val Divide = "divide"
+    val Sum = "sum"
+    val Average = "average"
+    val Min = "min"
+    val Max = "max"
   }
 
   sealed trait Command
 
   object Command {
-    final case class Divide(dividend: Option[Double], divisor: Option[Double]) extends Command
-    final case class Sum(numbers: List[Option[Double]]) extends Command
-    final case class Average(numbers: List[Option[Double]]) extends Command
-    final case class Min(numbers: List[Option[Double]]) extends Command
-    final case class Max(numbers: List[Option[Double]]) extends Command
+    final case class Divide(dividend: Double, divisor: Double) extends Command
+    final case class Sum(numbers: List[Double]) extends Command
+    final case class Average(numbers: List[Double]) extends Command
+    final case class Min(numbers: List[Double]) extends Command
+    final case class Max(numbers: List[Double]) extends Command
   }
 
   sealed trait ErrorMessage {
@@ -38,46 +37,54 @@ object ControlStructures {
     final case class CalculationError(value: String) extends ErrorMessage
   }
 
-  final case class DataToRender(command: String, numbers: List[Option[Double]], calculatedValue: Double)
+  final case class DataToRender(command: String, numbers: List[Double], calculatedValue: Double)
 
-  def parseCommand(x: String): Either[ErrorMessage, Command] = {
-    val listOfStrings = x.toLowerCase.split("\\s+").toList
-    val tupleToParse = (listOfStrings.head, listOfStrings.tail.map(_.toDoubleOption))
+  final case class ValidatedInputData(command: String, arguments: List[Double])
 
-    tupleToParse match {
-      case (DIVIDE, dividend :: divisor :: _) => Right(Divide(dividend, divisor))
-      case (SUM, list@_ :: _ :: _)     => Right(Sum(list))
-      case (AVERAGE, list@_ :: _ :: _) => Right(Average(list))
-      case (MIN, list@_ :: _ :: _)     => Right(Min(list))
-      case (MAX, list@_ :: _ :: _)     => Right(Max(list))
-      case _                           => Left(InvalidCommandError(ErrorPrefix + "Invalid command"))
+  def prepareInput(x: String): Either[ErrorMessage, ValidatedInputData] = {
+    x.toLowerCase.split("\\s+").toList match {
+      case Nil                                                     => Left(InvalidCommandError(ErrorPrefix + "Invalid command"))
+      case x :: xs if xs.map(_.toDoubleOption).forall(_.isDefined) => Right(ValidatedInputData(x, xs.map(_.toDouble)))
+      case _                                                       => Left(InvalidCommandError(ErrorPrefix + "Invalid arguments"))
+    }
+  }
+
+  def parseCommand(x: ValidatedInputData): Either[ErrorMessage, Command] = {
+    x match {
+      case ValidatedInputData(CommandConstants.Divide, dividend :: divisor :: Nil) => Right(Divide(dividend, divisor))
+      case ValidatedInputData(CommandConstants.Sum, list@_ :: _ :: _)              => Right(Sum(list))
+      case ValidatedInputData(CommandConstants.Average, list@_ :: _ :: _)          => Right(Average(list))
+      case ValidatedInputData(CommandConstants.Min, list@_ :: _ :: _)              => Right(Min(list))
+      case ValidatedInputData(CommandConstants.Max, list@_ :: _ :: _)              => Right(Max(list))
+      case _                                                                       => Left(InvalidCommandError(ErrorPrefix + "Invalid command"))
     }
   }
 
   def calculate(x: Command): Either[ErrorMessage, DataToRender] = {
     x match {
-      case Divide(_, Some(0))                        => Left(DivisionByZeroError(ErrorPrefix + "Division by zero"))
-      case Divide(Some(dividend), Some(divisor))     => Right(DataToRender(DIVIDE, List(Some(dividend), Some(divisor)), dividend / divisor))
-      case Sum(list) if list.forall(_.isDefined)     => Right(DataToRender(SUM, list, list.map(_.get).sum))
-      case Average(list) if list.forall(_.isDefined) => Right(DataToRender(AVERAGE, list, list.map(_.get).sum / list.length))
-      case Min(list) if list.forall(_.isDefined)     => Right(DataToRender(MIN, list, list.map(_.get).min))
-      case Max(list) if list.forall(_.isDefined)     => Right(DataToRender(MAX, list, list.map(_.get).max))
-      case _                                         => Left(CalculationError(ErrorPrefix + "Can not perform calculation on provided input"))
+      case Divide(_, 0)              => Left(DivisionByZeroError(ErrorPrefix + "Division by zero"))
+      case Divide(dividend, divisor) => Right(DataToRender(CommandConstants.Divide, List(dividend, divisor), dividend / divisor))
+      case Sum(list)                 => Right(DataToRender(CommandConstants.Sum, list, list.sum))
+      case Average(list)             => Right(DataToRender(CommandConstants.Average, list, list.sum / list.length))
+      case Min(list)                 => Right(DataToRender(CommandConstants.Min, list, list.min))
+      case Max(list)                 => Right(DataToRender(CommandConstants.Max, list, list.max))
+      case _                         => Left(CalculationError(ErrorPrefix + "Can not perform calculation on provided input"))
     }
   }
 
   def renderResult(x: DataToRender): String = {
     x.command match {
-      case DIVIDE => s"${x.numbers.head.get} ${x.command}d by ${x.numbers.tail.head.get} is ${x.calculatedValue}"
-      case _      => s"the ${x.command} of ${x.numbers.map(_.get).mkString(" ")} is ${x.calculatedValue}"
+      case CommandConstants.Divide => s"${x.numbers.head} ${x.command}d by ${x.numbers.tail.head} is ${x.calculatedValue}"
+      case _                       => s"the ${x.command} of ${x.numbers.mkString(" ")} is ${x.calculatedValue}"
     }
   }
 
   def process(x: String): String = {
     (for {
-      y <- parseCommand(x)
-      z <- calculate(y)
-    } yield renderResult(z)) match {
+      input <- prepareInput(x)
+      command <- parseCommand(input)
+      data <- calculate(command)
+    } yield renderResult(data)) match {
       case Right(value) => value
       case Left(error)  => error.value
     }
