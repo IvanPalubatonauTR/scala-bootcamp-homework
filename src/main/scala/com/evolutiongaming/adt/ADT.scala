@@ -1,7 +1,6 @@
 package com.evolutiongaming.adt
 
-import com.evolutiongaming.adt.ADT.Error.InvalidBoardSize
-import com.evolutiongaming.adt.ADT.Hand.OrderedHand
+import com.evolutiongaming.adt.ADT.Error.{InvalidBoardSize, InvalidHandSize}
 
 import scala.collection.SortedSet
 
@@ -36,13 +35,30 @@ object ADT {
 
   final case class Card(rank: Rank, suit: Suit)
 
-  sealed trait Hand extends Any
+  sealed trait Hand
 
   object Hand {
-    final case class OmahaHand(cards: Set[Card]) extends AnyVal with Hand
-    final case class TexasHand(cards: Set[Card]) extends AnyVal with Hand
-    final case class OrderedHand(hand: Hand, combination: PokerCombination) extends Hand
+
+    sealed abstract case class OmahaHand private(cards: Set[Card]) extends Hand
+
+    object OmahaHand {
+      def create(cards: Set[Card]): Either[ErrorMessage, Hand] = cards match {
+        case omaha if omaha.size != 4 => Left(InvalidHandSize)
+        case _ => Right(new OmahaHand(cards) {})
+      }
+    }
+    sealed abstract case class TexasHand private(cards: Set[Card]) extends Hand
+
+    object TexasHand {
+      def create(cards: Set[Card]): Either[ErrorMessage, Hand] = cards match {
+        case texas if texas.size != 2 => Left(InvalidHandSize)
+        case _ => Right(new TexasHand(cards) {})
+      }
+    }
+
   }
+
+  final case class OrderedHand(hand: Hand, combination: PokerCombination)
 
   sealed abstract class ErrorMessage(value: String) {
     def message: String = "Error: " + value
@@ -50,34 +66,56 @@ object ADT {
 
   object Error {
     final case object InvalidBoardSize extends ErrorMessage("Invalid board size")
+    final case object InvalidHandSize extends ErrorMessage("Invalid hand size")
   }
 
-  sealed abstract case class Board private(cards: List[Card])
+  sealed abstract case class Board private(cards: Set[Card])
 
   object Board {
-    def create(cards: List[Card]): Either[ErrorMessage, Board] = {
+    def create(cards: Set[Card]): Either[ErrorMessage, Board] = {
       cards match {
-        case board if board.length != 5 => Left(InvalidBoardSize)
+        case board if board.size != 5 => Left(InvalidBoardSize)
         case _ => Right(new Board(cards) {})
       }
     }
   }
 
-  sealed trait PokerCombination
+  sealed trait PokerCombination {
+    def weight:Int
+  }
 
   object PokerCombination {
-    final object StraightFlush extends PokerCombination
-    final object FourOfAKind extends PokerCombination
-    final object FullHouse extends PokerCombination
-    final object Flush extends PokerCombination
-    final object Straight extends PokerCombination
-    final object ThreeOfAKind extends PokerCombination
-    final object TwoPair extends PokerCombination
-    final object Pair extends PokerCombination
-    final object HighCard extends PokerCombination
+    final object StraightFlush extends PokerCombination {
+      override def weight: Int = 9
+    }
+    final object FourOfAKind extends PokerCombination {
+      override def weight: Int = 8
+    }
+    final object FullHouse extends PokerCombination {
+      override def weight: Int = 7
+    }
+    final object Flush extends PokerCombination {
+      override def weight: Int = 6
+    }
+    final object Straight extends PokerCombination {
+      override def weight: Int = 5
+    }
+    final object ThreeOfAKind extends PokerCombination {
+      override def weight: Int = 4
+    }
+    final object TwoPair extends PokerCombination {
+      override def weight: Int = 3
+    }
+    final object Pair extends PokerCombination {
+      override def weight: Int = 2
+    }
+    final object HighCard extends PokerCombination {
+      override def weight: Int = 1
+    }
   }
 
   final case class TestCase(board: Board, hands: Set[Hand])
 
   final case class TestResult(board: Board, hands: SortedSet[OrderedHand])
+
 }
