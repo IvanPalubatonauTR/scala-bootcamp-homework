@@ -1,4 +1,4 @@
-package main.scala.com.evolutiongaming.typeclass
+package com.evolutiongaming.typeclass
 
 object Implicits {
 
