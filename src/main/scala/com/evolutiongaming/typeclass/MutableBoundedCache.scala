@@ -7,6 +7,7 @@ import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
 object MutableBoundedCache {
+  val headScore = 12
 
   object SuperVipCollections4s {
     type SizeScore = Int
@@ -37,14 +38,14 @@ object MutableBoundedCache {
         val sizeCurrentElement = key.sizeScore + value.sizeScore
 
         @tailrec
-        def removeOversizeElement(innerMap: mutable.Map[K, V]): mutable.Map[K, V] = {
+        def putWithoutCacheOverloading(innerMap: mutable.Map[K, V]): mutable.Map[K, V] = {
           sizeCurrentElement match {
             case size if actualSize(innerMap) + size <= maxSizeScore => innerMap.addOne((key, value))
-            case _ => removeOversizeElement(map.subtractOne(innerMap.head._1))
+            case _ => putWithoutCacheOverloading(map.subtractOne(innerMap.head._1))
           }
         }
 
-        removeOversizeElement(map)
+        putWithoutCacheOverloading(map)
       }
 
       def get(key: K): Option[V] = {
@@ -89,34 +90,30 @@ object MutableBoundedCache {
       }
 
       implicit val packedMapIterate: Iterate2[PackedMultiMap] = new Iterate2[PackedMultiMap] {
-        override def iterator1[T, S](f: PackedMultiMap[T, S]): Iterator[T] = (for {
-          (a, _) <- f.inner
-        } yield a).iterator
+        override def iterator1[T, S](f: PackedMultiMap[T, S]): Iterator[T] = f.inner.map { case (a, _) => a }.iterator
 
-        override def iterator2[T, S](f: PackedMultiMap[T, S]): Iterator[S] = (for {
-          (_, b) <- f.inner
-        } yield b).iterator
+        override def iterator2[T, S](f: PackedMultiMap[T, S]): Iterator[S] = f.inner.map { case (_, b) => b }.iterator
       }
 
       implicit val byteGetSizeScore: GetSizeScore[Byte] = _ => 1
       implicit val charGetSizeScore: GetSizeScore[Char] = _ => 2
       implicit val intSizeScore: GetSizeScore[Int] = _ => 4
       implicit val longSizeScore: GetSizeScore[Long] = _ => 8
-      implicit val stringSizeScore: GetSizeScore[String] = str => 12 + str.length * 2
-      implicit val twitSizeScore: GetSizeScore[Twit] = v => 12 + v.id.sizeScore + v.attributes.sizeScore + v.hashTags.sizeScore + v.userId.sizeScore
-      implicit val fbiSizeScore: GetSizeScore[FbiNote] = v => 12 + v.month.sizeScore + v.favouriteChar.sizeScore + v.watchedPewDiePieTimes.sizeScore
+      implicit val stringSizeScore: GetSizeScore[String] = str => headScore + str.length * 2
+      implicit val twitSizeScore: GetSizeScore[Twit] = v => headScore + v.id.sizeScore + v.attributes.sizeScore + v.hashTags.sizeScore + v.userId.sizeScore + v.fbiNotes.sizeScore
+      implicit val fbiSizeScore: GetSizeScore[FbiNote] = v => headScore + v.month.sizeScore + v.favouriteChar.sizeScore + v.watchedPewDiePieTimes.sizeScore
 
-      implicit def seqSizeScore[T: GetSizeScore]: GetSizeScore[Seq[T]] = v => 12 + v.map(_.sizeScore).sum
+      implicit def seqSizeScore[T: GetSizeScore]: GetSizeScore[Seq[T]] = v => headScore + v.map(_.sizeScore).sum
 
-      implicit def arraySizeScore[T: GetSizeScore]: GetSizeScore[Array[T]] = v => 12 + v.map(_.sizeScore).sum
+      implicit def arraySizeScore[T: GetSizeScore]: GetSizeScore[Array[T]] = v => headScore + v.map(_.sizeScore).sum
 
       implicit def mapSizeScore[T: GetSizeScore, H: GetSizeScore]: GetSizeScore[Map[T, H]] = v => (for {
         (a, b) <- v
-      } yield a.sizeScore + b.sizeScore).sum + 12
+      } yield a.sizeScore + b.sizeScore).sum + headScore
 
       implicit def packedMapSizeScore[T: GetSizeScore, H: GetSizeScore]: GetSizeScore[PackedMultiMap[T, H]] = v => (for {
         (a, b) <- v.inner
-      } yield a.sizeScore + b.sizeScore).sum + 12
+      } yield a.sizeScore + b.sizeScore).sum + headScore
     }
 
 
@@ -146,7 +143,6 @@ object MutableBoundedCache {
       def get(id: Long): Option[Twit]
     }
 
-    //TODO: Wrong result for last test
     def createTwitCache(maxSizeScore: SizeScore): TwitCache = {
       import instances._
       val cache = new MutableBoundedCache[Long, Twit](maxSizeScore)
