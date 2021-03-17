@@ -10,8 +10,8 @@ object ErrorHandling {
   sealed trait DateAttribute
 
   object DateAttribute {
-    final case class Month(month: String) extends AnyVal with DateAttribute
-    final case class Year(year: String) extends AnyVal with DateAttribute
+    final case class Month(month: String) extends AnyVal
+    final case class Year(year: String) extends AnyVal
   }
 
   final case class Name(name: String) extends AnyVal

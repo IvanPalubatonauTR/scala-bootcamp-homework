@@ -27,7 +27,7 @@ object Implicits {
 
     final case class Money(amount: BigDecimal)
 
-    implicit val moneyOrdering: Ordering[Money] = (x: BigDecimal, y: BigDecimal) => x.toInt - y.toInt
+    implicit val moneyOrdering: Ordering[Money] = (x: Money, y: Money) => x.amount.toInt - y.amount.toInt
   }
 
   object Task2 {
