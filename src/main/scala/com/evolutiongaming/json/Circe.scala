@@ -7,7 +7,7 @@ import io.circe
 import io.circe.{Decoder, Encoder, HCursor}
 import io.circe.parser._
 import io.circe.generic.JsonCodec
-
+import io.circe.generic.extras.{Configuration, ConfiguredJsonCodec, JsonKey}
 import scalaj.http.Http
 
 import scala.io.Source
@@ -15,25 +15,11 @@ import scala.util.Try
 
 object Circe {
 
-  @JsonCodec final case class TeamTotals(assists: String, fullTimeoutRemaining: String, plusMinus: String)
+  implicit val config: Configuration = Configuration.default
+
+  @ConfiguredJsonCodec final case class TeamTotals(assists: String, @JsonKey("full_timeout_remaining") fullTimeoutRemaining: String, plusMinus: String)
 
   @JsonCodec final case class TeamBoxScore(totals: TeamTotals)
-
-  object TeamBoxScore {
-
-    import io.circe.generic.semiauto._
-
-    val decoderDerived: Decoder[TeamTotals] = deriveDecoder[TeamTotals]
-    val decoderCamelSnake: Decoder[TeamTotals] = (c: HCursor) =>
-      for {
-        assists <- c.downField("assists").as[String]
-        fullTimeoutRemaining <- c.downField("full_timeout_remaining").as[String]
-        plusMinus <- c.downField("plusMinus").as[String]
-      } yield {
-        TeamTotals(assists, fullTimeoutRemaining, plusMinus)
-      }
-    implicit lazy val decoder: Decoder[TeamTotals] = decoderDerived or decoderCamelSnake
-  }
 
   @JsonCodec final case class GameStats(hTeam: TeamBoxScore, vTeam: TeamBoxScore)
 
