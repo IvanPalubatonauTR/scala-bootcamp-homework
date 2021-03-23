@@ -25,10 +25,7 @@ object CatsHW {
         case Right(a) => f(a)
       }
 
-      override def pure[A](x: A): Either[T, A] = x match {
-        case t: T => Left(t)
-        case a: A => Right(a)
-      }
+      override def pure[A](x: A): Either[T, A] = Right(x)
 
       override def tailRecM[A, B](a: A)(f: A => Either[T, Either[A, B]]): Either[T, B] = ???
     }
