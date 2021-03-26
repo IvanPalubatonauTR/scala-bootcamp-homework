@@ -2,6 +2,7 @@ package com.evolutiongaming.error_handling
 
 import cats.data.ValidatedNec
 import cats.syntax.all._
+import com.evolutiongaming.error_handling.ErrorHandling.PaymentCardValidator.{AllErrorsOr, validateCardNumber, validateDate, validateUser}
 
 object ErrorHandling {
 
@@ -10,8 +11,11 @@ object ErrorHandling {
   sealed trait DateAttribute
 
   object DateAttribute {
-    final case class Month(month: String) extends AnyVal
-    final case class Year(year: String) extends AnyVal
+
+    final case class Month(month: Int) extends AnyVal
+
+    final case class Year(year: Int) extends AnyVal
+
   }
 
   final case class Name(name: String) extends AnyVal
@@ -22,7 +26,14 @@ object ErrorHandling {
 
   final case class User(username: Name)
 
-  case class PaymentCard(user: User, cardNumber: CardNumber, validityDate: ValidityDate)
+  sealed abstract case class PaymentCard private(user: User, cardNumber: CardNumber, validityDate: ValidityDate)
+
+  object PaymentCard {
+    def create(user: User, cardNumber: CardNumber, validityDate: ValidityDate): AllErrorsOr[PaymentCard] =
+      (validateUser(user), validateCardNumber(cardNumber), validateDate(validityDate)).mapN {
+        case (user, cardNumber, date) => new PaymentCard(user, cardNumber, date) {}
+      }
+  }
 
   sealed trait ValidationError
 
@@ -60,7 +71,7 @@ object ErrorHandling {
 
     type AllErrorsOr[A] = ValidatedNec[ValidationError, A]
 
-    private def validateUser(user: User): AllErrorsOr[User] = {
+    def validateUser(user: User): AllErrorsOr[User] = {
       val username = user.username.name
 
       def validateNameLength(userName: String): AllErrorsOr[User] =
@@ -76,7 +87,7 @@ object ErrorHandling {
     }
 
 
-    private def validateCardNumber(cardNumber: CardNumber): AllErrorsOr[CardNumber] = {
+    def validateCardNumber(cardNumber: CardNumber): AllErrorsOr[CardNumber] = {
       val card = cardNumber.value
 
       def validateCardLength(card: String): AllErrorsOr[CardNumber] = {
@@ -89,29 +100,23 @@ object ErrorHandling {
         else cardNumberIsNotNumeric.invalidNec
       }
 
-      validateCardLength(card)
-        .productR(validateCardContents(card))
+      validateCardLength(card) *> validateCardContents(card)
 
     }
 
-    private def validateDate(validityDate: ValidityDate): AllErrorsOr[ValidityDate] = {
+    def validateDate(validityDate: ValidityDate): AllErrorsOr[ValidityDate] = {
       val month = validityDate.month.month
       val year = validityDate.year.year
 
-      def validateDateLength(month: String, year: String): AllErrorsOr[ValidityDate] =
-        if (month.length == 2 && year.length == 4) ValidityDate(Month(month), Year(year)).validNec
+      def validateDateLength(month: Int, year: Int): AllErrorsOr[ValidityDate] =
+        if (month == 2 && year == 4) ValidityDate(Month(month), Year(year)).validNec
         else DateLengthIsInvalid.invalidNec
 
-      def validateDateContent(month: String, year: String): AllErrorsOr[ValidityDate] =
-        if (month.matches("\\d+") && year.matches("\\d+")) ValidityDate(Month(month), Year(year)).validNec
-        else DateIsNotNumeric.invalidNec
-
       validateDateLength(month, year)
-        .productR(validateDateContent(month, year))
     }
 
-    def validate(user: User, cardNumber: CardNumber, date: ValidityDate): AllErrorsOr[PaymentCard] =
-      (validateUser(user), validateCardNumber(cardNumber), validateDate(date)).mapN(PaymentCard)
   }
 
 }
+
+
